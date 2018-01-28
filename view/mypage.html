@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <title>マイページ</title>
+    <!-- AWS SDK //-->
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.23.0.min.js"></script>
+    <!-- Amazon Cognito //-->
+    <script src="../js/jsbn.js"></script>
+    <script src="../js/jsbn2.js"></script>
+    <script src="../js/sjcl.js"></script>
+    <script src="../js/aws-cognito-sdk.min.js"></script>
+    <script src="../js/amazon-cognito.min.js"></script>
+    <script src="../js/amazon-cognito-identity.min.js"></script>
+    <!-- jquery //-->
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <!-- IE //-->
+    <script src="https://www.promisejs.org/polyfills/promise-7.0.4.min.js"></script>
+    <!-- bootstrap3 //-->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+    <script src="../js/config.js"></script>
+</head>
+<body onLoad="loadHello()" onUnload="unloadBye()">
+    <div class="container">
+        <form class="form-mypage" name="form1">
+            <h2 class="form-mypage-heading">マイページ</h2>
+            <div id="message" class="alert" style="display:none;"></div>
+            <label id="labelUsername">UserID : </label><br>
+            <input type="hidden" id="inputUsername" class="form-control" placeholder="UserID" required autofocus></input>
+            <label id="labelEmail">Email : </label><br>
+            <input type="hidden" id="inputEmail" class="form-control" placeholder="Email" required autofocus></input>
+            <input type="text" id="inputNewEmail" class="form-control" placeholder="New Email" required autofocus></input>
+            <p></p>
+            <input type="button" class="btn btn-lg btn-primary btn-bloc" id="update_btn" value="Update"></input>
+            <p><br/></p>
+            <label id="labelPassword">Old Password</label><br>
+            <input type="password" id="inputPassword" class="form-control" placeholder="Old Password" required></input>
+            <label id="labelNewPassword">New Password</label><br>
+            <input type="password" id="inputNewPassword" class="form-control" placeholder="New Password" required></input>
+            <label id="labelRetypeNewPassword">Retype New Password</label><br>
+            <input type="password" id="inputRetypeNewPassword" class="form-control" placeholder="Retype New Password" required></input>
+            <p></p>
+            <input type="button" class="btn btn-lg btn-primary btn-bloc" id="change_password_btn" value="Change Password"></input>
+            <p><br/></p>
+            <input type="button" class="btn btn-lg btn-primary btn-bloc" id="sign_out_btn" value="Sign Out"></input>
+        </form>
+    </div>
+    <script>
+        // Amazon Cognito
+        AWSCognito.config.region = "us-east-2";
+        AWSCognito.config.credentials = new AWS.CognitoIdentityCredentials({
+            IdentityPoolId: IdentityPoolId
+        });
+        var data = {
+          UserPoolId : UserPoolId,
+          ClientId : ClientId
+        };
+        var userPool = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserPool(data);
+        var attributeList = [];
+        var cognitoUser;
+
+        $("#update_btn").click(function() {
+            email = $("#inputEmail").val();
+            newemail = $("#inputNewEmail").val();
+            if(!newemail) {
+                $("#message").text("Input New Email !!");
+                $("#message").addClass("alert-danger");
+                $("#message").show();
+                return false;
+            }
+            var attributeList = [];
+            var attribute = {
+                Name : "email",
+                Value : newemail
+            };
+            var attribute = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserAttribute(attribute);
+            attributeList.push(attribute);
+            cognitoUser = userPool.getCurrentUser();
+            console.log("cognitoUser : ");
+            console.log(cognitoUser);
+            if (cognitoUser != null) {
+                cognitoUser.getSession(function(err, result) {
+                    if (result) {
+                        cognitoUser.updateAttributes(attributeList, function(err, result) {
+                            if (err) {
+                                console.log(err);
+                                console.log(result);
+                                $("#message").text(err);
+                                $("#message").addClass("alert-danger");
+                                $("#message").show();
+                            } else {
+                                $("#message").text("Update.");
+                                $("#message").addClass("alert-success");
+                                $("#message").show();
+                            }
+                        });
+                    } else {
+                        var url = "signin.html";
+                        $(location).attr("href", url);
+                    }
+                });
+            } else {
+              var url = "signin.html";
+              $(location).attr("href", url);
+            }
+        });
+
+        $("#change_password_btn").click(function() {
+            password = $("#inputPassword").val();
+            newpassword = $("#inputNewPassword").val();
+            retypenewpassword = $("#inputRetypeNewPassword").val();
+            if(!password) {
+                $("#message").text("Input Old Password !!");
+                $("#message").addClass("alert-danger");
+                $("#message").show();
+                return false;
+            }
+            if(!newpassword) {
+                $("#message").text("Input New Password !!");
+                $("#message").addClass("alert-danger");
+                $("#message").show();
+                return false;
+            }
+            if(!retypenewpassword) {
+                $("#message").text("Input Retype New Password !!");
+                $("#message").addClass("alert-danger");
+                $("#message").show();
+                return false;
+            }
+            if(newpassword != retypenewpassword) {
+                $("#message").text("Wrong Retype New Password !!");
+                $("#message").addClass("alert-danger");
+                $("#message").show();
+                return false;
+            }
+            cognitoUser = userPool.getCurrentUser();
+            console.log("cognitoUser : ");
+            console.log(cognitoUser);
+            if (cognitoUser != null) {
+                cognitoUser.getSession(function(err, result) {
+                    if (result) {
+                        cognitoUser.changePassword(password, newpassword, function(err, result) {
+                            if (err) {
+                                console.log(err);
+                                console.log(result);
+                                $("#message").text(err);
+                                $("#message").addClass("alert-danger");
+                                $("#message").show();
+                            } else {
+                                $("#message").text("Change Password.");
+                                $("#message").addClass("alert-success");
+                                $("#message").show();
+                            }
+                        });
+                    } else {
+                        var url = "signin.html";
+                        $(location).attr("href", url);
+                    }
+                });
+            } else {
+                var url = "signin.html";
+                $(location).attr("href", url);
+            }
+        });
+
+        $("#sign_out_btn").click(function() {
+            cognitoUser = userPool.getCurrentUser();
+            console.log("cognitoUser : ");
+            console.log(cognitoUser);
+            if (cognitoUser != null) {
+                console.log(cognitoUser);
+                cognitoUser.signOut();
+            }
+            var url = "signin.html";
+            $(location).attr("href", url);
+        });
+
+        function loadHello() {
+            console.log("userPool : ");
+            console.log(userPool);
+            cognitoUser = userPool.getCurrentUser();
+            console.log("cognitoUser : ");
+            console.log(cognitoUser);
+            if (cognitoUser != null) {
+                console.log("cognitoUser is not null.");
+                cognitoUser.getSession(function(err, result) {
+                    if (result) {
+                        console.log("Id      Token + " + result.getIdToken().getJwtToken());
+                        console.log("Access  Token + " + result.getAccessToken().getJwtToken());
+                        console.log("Refresh Token + " + result.refreshToken.token);
+                        console.log(result);
+                        // Common
+                        AWS.config.region = "us-east-2";
+                        AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+                            IdentityPoolId: "us-east-2:f0cda9b3-c624-4b88-84ff-274ed2775d77",
+                            Logins: {
+                                Logins : result.getIdToken().getJwtToken()
+                            }
+                        });
+                        //
+                        AWS.config.credentials.get(function(err) {
+                            if (!err) {
+                                console.log("accessKeyId     + " + AWS.config.credentials.accessKeyId);
+                                console.log("secretAccessKey + " + AWS.config.credentials.secretAccessKey);
+                                console.log("sessionToken    + " + AWS.config.credentials.sessionToken);
+                            }else{
+                                    log("Error : " + err);
+                            }
+                        });
+                        cognitoUser.getUserAttributes(function(err, attrresult) {
+                            if (err) {
+                                alert(err);
+                                return;
+                            }
+                            console.log(attrresult);
+                            console.log(cognitoUser);
+                            console.log(cognitoUser.username);
+                            $("#labelUsername").html("UserID : " + cognitoUser.username);
+                            document.getElementById("inputUsername").value = cognitoUser.username;
+                            for (i = 0; i < attrresult.length; i++) {
+                                if (attrresult[i].getName()=="email") {
+                                    $("#labelEmail").html("Email : " + attrresult[i].getValue());
+                                    document.getElementById("inputEmail").value = attrresult[i].getValue();
+                                }
+                            }
+                            console.log(AWSCognito.config);
+                            console.log(AWSCognito.config.credentials);
+                            console.log("Cognito Identity Id: " + AWSCognito.config.credentials.identityId);
+                        });
+                    } else {
+                        console.log("cognitoUser.getSession - Error.");
+                        //var url = "signin.html";
+                        //$(location).attr("href", url);
+                    }
+                });
+            } else {
+                console.log("cognitoUser is null.");
+                //var url = "signin.html";
+                //$(location).attr("href", url);
+            }
+        }
+
+        function unloadBye() {
+            console.log(AWS.config);
+            //alert("Bye!");
+        }
+
+    </script>
+</body>
+</html>
